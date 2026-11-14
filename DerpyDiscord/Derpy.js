@@ -12,11 +12,17 @@ client.once(Events.ClientReady, (readyClient) => {
 });
 client.login(token);
 
-let Memory = {}
+
 let Heartbeat = []
 let Attention = {"OnMessage":[]}
-
 let Cycle = 0
+
+
+//Memory
+let Memory = {
+    "Money": {555:0},
+    "Admins" : [555,569611563745542174]
+}
 
 
 //////////////////////////
@@ -91,9 +97,25 @@ client.on('messageCreate', async message => {
     let i = Attention.OnMessage.length 
     while (i--){
         let Listener = Attention.OnMessage[i]
-        if (Listener[0](message,Listener[1]) == true){
-            let Response = Listener[2](message,Listener[3])
-            console.log(Response)
+        
+
+        if (typeof Listener[0] == "function"){
+            Listener = [[[Listener[0],Listener[1]]],Listener[2],Listener[3]]
+        }
+
+        let Checkers = Listener[0]
+        let AllTrue = true
+        Checkers.forEach(Checker => {
+            console.log("Checker",Checker)
+            if (Checker[0](message,Checker[1]) == false){
+                AllTrue = false
+            }
+        });
+        
+
+
+        if (AllTrue == true){
+            let Response = Listener[1](message,Listener[2])
             if (Response == false){
                 Heartbeat.splice(i,1)
             }
@@ -125,7 +147,7 @@ setInterval(() => {
 //Adding Function To Attention
 Attention.OnMessage.push([IsMessage,"hi",SendMessage,"hi"])
 Attention.OnMessage.push([StartsWith,"hi",SendMessage,"hi2"])
-Attention.OnMessage.push([Contains,"hi",SendMessage,"hi3"])
+Attention.OnMessage.push([[[Contains,"hi"],[Contains,"lol"]],SendMessage,"hi3"])
 
 //Adding Memory To Heartbeat
 Heartbeat.push([200,Store])
