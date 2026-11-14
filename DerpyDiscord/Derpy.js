@@ -1,7 +1,7 @@
-//
 const { Client, Events, GatewayIntentBits, shouldUseGlobalFetchAndWebSocket } = require('discord.js');
 let fs = require('fs');
 const { token } = require('./config.json');
+const { checkPrime } = require('crypto');
 const client = new Client({ intents: [GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
 		GatewayIntentBits.MessageContent,
@@ -18,12 +18,14 @@ let Attention = {"OnMessage":[]}
 
 let Cycle = 0
 
+
 //////////////////////////
 //  Making Thoughts     //
 //////////////////////////
 
 
-//Basic Checker Function
+//Checkers//
+
 function IsMessage(message,Checking){
     if (message.content == Checking){
         return true
@@ -32,11 +34,31 @@ function IsMessage(message,Checking){
     return false
 }
 
-//Basic Response Function
+function Contains(message,Checking){
+    return message.content.includes(Checking) 
+}
+
+function StartsWith(message,Checking){
+    let CheckingLength = Checking.length
+    let NewContent = message.content.slice(0,CheckingLength)
+    if (NewContent.toLowerCase()== Checking.toLowerCase()){
+        return true
+    }
+    return false
+    
+}
+
+//Responses//
+
 function SendMessage(message,ToSend){
     message.reply(ToSend)
     return true
 }
+
+//////////////
+//  Misc    //
+//////////////
+
 
 //Recall Memory
 function Recall(){
@@ -51,13 +73,14 @@ function Store(){
 
 }
 
+
 //////////////////////////
 //  Setting Routines    //
 //////////////////////////
 
+
 //Setting Memory Upon Awake
 Recall()
-
 
 //On Message Attention Seeker
 client.on('messageCreate', async message => {
@@ -98,10 +121,12 @@ setInterval(() => {
 //  Setting Processes   //
 //////////////////////////
 
+
 //Adding Function To Attention
 Attention.OnMessage.push([IsMessage,"hi",SendMessage,"hi"])
+Attention.OnMessage.push([StartsWith,"hi",SendMessage,"hi2"])
+Attention.OnMessage.push([Contains,"hi",SendMessage,"hi3"])
 
 //Adding Memory To Heartbeat
 Heartbeat.push([200,Store])
 
-console.log(Memory)
