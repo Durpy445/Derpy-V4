@@ -36,7 +36,6 @@ function IsMessage(message,Checking){
     if (message.content == Checking){
         return true
     }
-    console.log("False Check")
     return false
 }
 
@@ -90,7 +89,6 @@ Recall()
 
 //On Message Attention Seeker
 client.on('messageCreate', async message => {
-    let ShortTerm = []
     if (message.author.id == client.user.id){
         return
     }
@@ -106,7 +104,6 @@ client.on('messageCreate', async message => {
         let Checkers = Listener[0]
         let AllTrue = true
         Checkers.forEach(Checker => {
-            console.log("Checker",Checker)
             if (Checker[0](message,Checker[1]) == false){
                 AllTrue = false
             }
@@ -115,10 +112,26 @@ client.on('messageCreate', async message => {
 
 
         if (AllTrue == true){
-            let Response = Listener[1](message,Listener[2])
-            if (Response == false){
+
+            if (typeof Listener[1] == "function"){
+                Listener = [Listener[0],[[Listener[1],Listener[2]]]]
+            }
+
+            let Responses = Listener[1]
+            let Result = true
+
+            Responses.forEach(Response => {
+                
+                if (Response[0](message,Response[1]) == false){
+                    Result = false
+                }
+            });
+
+            if (Result == false){
                 Heartbeat.splice(i,1)
             }
+
+            
         }
     };
 })
@@ -147,7 +160,8 @@ setInterval(() => {
 //Adding Function To Attention
 Attention.OnMessage.push([IsMessage,"hi",SendMessage,"hi"])
 Attention.OnMessage.push([StartsWith,"hi",SendMessage,"hi2"])
-Attention.OnMessage.push([[[Contains,"hi"],[Contains,"lol"]],SendMessage,"hi3"])
+Attention.OnMessage.push([[[Contains,"hi"],[Contains,"lol"]],[[SendMessage,"hi3"],[SendMessage,"lol"]]])
+
 
 //Adding Memory To Heartbeat
 Heartbeat.push([200,Store])
