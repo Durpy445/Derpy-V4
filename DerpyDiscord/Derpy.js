@@ -1,9 +1,6 @@
 const { Client, Events, GatewayIntentBits, shouldUseGlobalFetchAndWebSocket, VoiceRegion, getInitialSendRateLimitState } = require('discord.js');
 let fs = require('fs');
 const { token } = require('./config.json');
-const { checkPrime } = require('crypto');
-const { basename } = require('path');
-const { receiveMessageOnPort } = require('worker_threads');
 const client = new Client({ intents: [GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
 		GatewayIntentBits.MessageContent,
@@ -133,6 +130,24 @@ function StartTask(Task){
     Heartbeat.push(Task)
 }
 
+//Run Functions Recursively
+//INPUT : message, Statement
+function RecursiveFunction(message, Statement) {
+    let NewArgs = []
+    Statement.Arguments.forEach(Argument => {
+        if(Argument == undefined){
+            NewArgs.push(message)
+            return
+        }
+        if(typeof Argument != "object"){
+            NewArgs.push(Argument)
+            return
+        }
+        NewArgs.push(RecursiveFunction(message,Argument))
+    });
+
+    return Statement.Function.apply(null,NewArgs)
+}
 
 //////////////////////////
 //  Setting Routines    //
@@ -149,45 +164,35 @@ client.on('messageCreate', async message => {
     }
     let i = Attention.OnMessage.length 
     while (i--){
-        let Listener = Attention.OnMessage[i]
-        
-
-        if (typeof Listener[0] == "function"){
-            Listener = [[[Listener[0],Listener[1]]],Listener[2],Listener[3]]
-        }
-
-        let Checkers = Listener[0]
-        let AllTrue = true
-        Checkers.forEach(Checker => {
-            if (Checker[0](message,Checker[1]) == false){
-                AllTrue = false
+        let Seeker = Attention.OnMessage[i]
+        let Results = true
+        Seeker.Checkers.forEach(element => {
+            let Result = element
+            if (typeof element == "object"){
+                Result = RecursiveFunction(message,element) 
+            }
+            if(Result == false){
+                Results = false
             }
         });
-        
-
-
-        if (AllTrue == true){
-
-            if (typeof Listener[1] == "function"){
-                Listener = [Listener[0],[[Listener[1],Listener[2]]]]
-            }
-
-            let Responses = Listener[1]
-            let Result = true
-
-            Responses.forEach(Response => {
-                
-                if (Response[0](message,Response[1]) == false){
-                    Result = false
-                }
-            });
-
-            if (Result == false){
-                Heartbeat.splice(i,1)
-            }
-
-            
+        if (Results == false){
+            continue
         }
+
+        Seeker.Responses.forEach(element => {
+            let Result = element
+            if (typeof element == "object"){
+                Result = RecursiveFunction(message,element) 
+            }
+            if(Result == false){
+                Results = false
+            }
+        });
+        if (Results == false){
+            Attention.OnMessage.splice(i,1)
+        }
+
+
     };
 })
 
@@ -211,13 +216,47 @@ setInterval(() => {
 //  Setting Processes   //
 //////////////////////////
 
+//Templates
 
-//Adding Function To Attention
-PayAttention([StartsWith,"hi",SendMessage,"hi2"])
-PayAttention([StartsWith,"hi",[[SendMessage,"hi3"],[SendMessage,"lol"]]])
-PayAttention([[[StartsWith,"hi"],[Contains,"lol"]],[[SendMessage,"hi3"],[SendMessage,"lol"]]])
+let ExampleSeeker = {
+    "Checkers": [],
+    "Responses":[]
+}
 
-PayAttention([[[IsMessage,"take"],[IsAdmin,"null"]],GiveMoney,-500])
+let ExampleChecker = {
+    "Function": StartsWith,
+    "Arguments": []
+}
+
+let ExampleResponse = {
+    "Function": console.log,
+    "Arguments": []
+} 
+
+let MirrorMessage = {
+    "Function":SendMessage,
+    "Arguments": [undefined,{
+        "Function": (b)=>{return b},
+        "Arguments": [undefined]
+    }]
+}
+
+let AdminCheck = {
+    "Function": IsAdmin,
+    "Arguments": [undefined]
+}
+
+PayAttention({
+    "Checkers": [{
+        "Function":IsMessage,
+        "Arguments": [undefined,"take"]
+    },AdminCheck],
+    "Responses":[MirrorMessage,{
+        "Function":GiveMoney,
+        "Arguments":[undefined,-500]
+    }]
+})
+
 
 
 //Adding Memory To Heartbeat
@@ -226,7 +265,3 @@ StartTask([5,() => {console.log(Memory.Bank)}])
 
 
 initMemory()
-
-// TODO
-//
-// Make Checks And Responses Recursive
