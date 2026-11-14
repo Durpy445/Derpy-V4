@@ -1,7 +1,9 @@
-const { Client, Events, GatewayIntentBits, shouldUseGlobalFetchAndWebSocket } = require('discord.js');
+const { Client, Events, GatewayIntentBits, shouldUseGlobalFetchAndWebSocket, VoiceRegion, getInitialSendRateLimitState } = require('discord.js');
 let fs = require('fs');
 const { token } = require('./config.json');
 const { checkPrime } = require('crypto');
+const { basename } = require('path');
+const { receiveMessageOnPort } = require('worker_threads');
 const client = new Client({ intents: [GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
 		GatewayIntentBits.MessageContent,
@@ -19,9 +21,9 @@ let Cycle = 0
 
 
 //Memory
-let Memory = {
-    "Money": {555:0},
-    "Admins" : [555,569611563745542174]
+let MemoryTemplate = {
+    "Bank": {"555":0},
+    "Admins" : ["555","569611563745542174"]
 }
 
 
@@ -30,8 +32,7 @@ let Memory = {
 //////////////////////////
 
 
-//Checkers//
-
+//Basic Checkers//
 function IsMessage(message,Checking){
     if (message.content == Checking){
         return true
@@ -53,12 +54,43 @@ function StartsWith(message,Checking){
     
 }
 
-//Responses//
+function HasEnoughMoney(message,Amount){
+    let id = message.author.id
+    initBank(id)
+    return BankBalance(id) >= Amount
+}
 
+function IsAdmin(message){
+    return Memory.Admins.includes(message.author.id)
+}
+
+//Basic Responses//
 function SendMessage(message,ToSend){
     message.reply(ToSend)
     return true
 }
+
+function GiveMoney(message,Amount){
+    let id = message.author.id
+    let Bank = Memory.Bank
+    initBank(id)
+    let BaseAmount = Bank[id]
+    Bank[id] = BaseAmount + Amount
+}
+
+
+//Utility//
+
+function BankBalance(id){
+    return Memory.Bank[id]
+}
+
+
+function PayUser(Donerid,Recipientid,Amount){
+    GiveMoney(Donerid,-Amount)
+    GiveMoney(Recipientid,Amount)
+}
+
 
 //////////////
 //  Misc    //
@@ -76,6 +108,29 @@ function Store(){
     let Thoughts = JSON.stringify(Memory)
     fs.writeFileSync("memory.json", Thoughts);
 
+}
+
+//Initialise Bank
+function initBank(id){
+
+    if (Memory.Bank[id] == undefined){
+        Memory.Bank[id] = 0
+    }
+}
+
+//Initialise Memory
+function initMemory(){
+    Memory = MemoryTemplate
+}
+
+//Add Attention
+function PayAttention(Listener){
+    Attention.OnMessage.push(Listener)
+}
+
+//Add Heartbeat
+function StartTask(Task){
+    Heartbeat.push(Task)
 }
 
 
@@ -158,11 +213,20 @@ setInterval(() => {
 
 
 //Adding Function To Attention
-Attention.OnMessage.push([IsMessage,"hi",SendMessage,"hi"])
-Attention.OnMessage.push([StartsWith,"hi",SendMessage,"hi2"])
-Attention.OnMessage.push([[[Contains,"hi"],[Contains,"lol"]],[[SendMessage,"hi3"],[SendMessage,"lol"]]])
+PayAttention([StartsWith,"hi",SendMessage,"hi2"])
+PayAttention([StartsWith,"hi",[[SendMessage,"hi3"],[SendMessage,"lol"]]])
+PayAttention([[[StartsWith,"hi"],[Contains,"lol"]],[[SendMessage,"hi3"],[SendMessage,"lol"]]])
+
+PayAttention([[[IsMessage,"take"],[IsAdmin,"null"]],GiveMoney,-500])
 
 
 //Adding Memory To Heartbeat
-Heartbeat.push([200,Store])
+StartTask([200,Store])
+StartTask([5,() => {console.log(Memory.Bank)}])
 
+
+initMemory()
+
+// TODO
+//
+// Make Checks And Responses Recursive
