@@ -20,7 +20,8 @@ let Cycle = 0
 //Memory
 let MemoryTemplate = {
     "Bank": {"555":0},
-    "Admins" : ["555","569611563745542174"]
+    "Admins" : ["555","569611563745542174"],
+    "Responses" : ["hi lol"]
 }
 
 
@@ -31,6 +32,7 @@ let MemoryTemplate = {
 
 //Basic Checkers//
 function IsMessage(message,Checking){
+    console.log(message)
     if (message.content == Checking){
         return true
     }
@@ -88,6 +90,9 @@ function PayUser(Donerid,Recipientid,Amount){
     GiveMoney(Recipientid,Amount)
 }
 
+function GetRandomResponse(){
+    return Memory.Responses[Math.floor(Math.random() * Memory.Responses.length)];
+}
 
 //////////////
 //  Misc    //
@@ -98,6 +103,9 @@ function PayUser(Donerid,Recipientid,Amount){
 function Recall(){
     let LongTerm = fs.readFileSync('memory.json', 'utf8')
     Memory = JSON.parse(LongTerm)
+    let Responses = fs.readFileSync('Responses.json', 'utf8')
+    console.log(Responses)
+    Memory.Responses = JSON.parse(Responses)
 }
 
 //Store Memory
@@ -134,18 +142,27 @@ function StartTask(Task){
 //INPUT : message, Statement
 function RecursiveFunction(message, Statement) {
     let NewArgs = []
+    if (typeof Statement.Arguments != "object"){
+        NewArgs.push(Statement.Arguments)
+    }
     Statement.Arguments.forEach(Argument => {
+
         if(Argument == undefined){
             NewArgs.push(message)
-            return
-        }
-        if(typeof Argument != "object"){
+            
+        }else if(typeof Argument != "object"){
             NewArgs.push(Argument)
-            return
+            
+        }else{
+             NewArgs.push(RecursiveFunction(message,Argument))
         }
-        NewArgs.push(RecursiveFunction(message,Argument))
+       
     });
 
+
+    if (NewArgs.length == 0){
+        return Statement.Function.apply(null)
+    }
     return Statement.Function.apply(null,NewArgs)
 }
 
@@ -246,6 +263,16 @@ let AdminCheck = {
     "Arguments": [undefined]
 }
 
+let RandomResonse =  {
+    "Function":GetRandomResponse,
+    "Arguments":[]
+}
+let SendRandomResponse = {
+        "Function":SendMessage,
+        "Arguments":[undefined,RandomResonse]
+    }
+
+
 PayAttention({
     "Checkers": [{
         "Function":IsMessage,
@@ -257,11 +284,18 @@ PayAttention({
     }]
 })
 
+PayAttention({
+    "Checkers": [{
+        "Function":IsMessage,
+        "Arguments": [undefined,"?"]
+    },AdminCheck],
+    "Responses":[SendRandomResponse]
+})
 
 
 //Adding Memory To Heartbeat
 StartTask([200,Store])
-StartTask([5,() => {console.log(Memory.Bank)}])
+StartTask([5,() => {console.log(Memory)}])
 
 
-initMemory()
+
